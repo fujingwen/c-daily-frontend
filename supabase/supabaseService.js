@@ -26,10 +26,10 @@ class SupabaseService {
     try {
       // 监听认证状态变化
       this.setupAuthListeners()
-      
+
       // 检查网络连接
       this.setupNetworkListeners()
-      
+
       this.isInitialized = true
       console.log('Supabase服务初始化成功')
     } catch (error) {
@@ -42,12 +42,12 @@ class SupabaseService {
   setupAuthListeners() {
     supabase.auth.onAuthStateChange((event, session) => {
       console.log('认证状态变化:', event, session)
-      
+
       // 当用户登录时，同步本地数据到Supabase
       if (event === 'SIGNED_IN') {
         this.syncLocalDataToSupabase()
       }
-      
+
       // 当用户登出时，清除本地认证信息
       if (event === 'SIGNED_OUT') {
         storageManager.removeItem('supabase.session')
@@ -62,7 +62,7 @@ class SupabaseService {
       console.log('网络连接恢复，开始同步数据')
       this.processSyncQueue()
     })
-    
+
     window.addEventListener('offline', () => {
       console.log('网络连接断开')
     })
@@ -75,12 +75,12 @@ class SupabaseService {
         email,
         password
       })
-      
+
       if (error) throw error
-      
+
       // 保存会话到本地存储
       await storageManager.setItem('supabase.session', data.session)
-      
+
       return data
     } catch (error) {
       console.error('登录失败:', error)
@@ -97,9 +97,9 @@ class SupabaseService {
           data: userData
         }
       })
-      
+
       if (error) throw error
-      
+
       return data
     } catch (error) {
       console.error('注册失败:', error)
@@ -110,12 +110,12 @@ class SupabaseService {
   async signOut() {
     try {
       const { error } = await supabase.auth.signOut()
-      
+
       if (error) throw error
-      
+
       // 清除本地会话
       await storageManager.removeItem('supabase.session')
-      
+
       return true
     } catch (error) {
       console.error('登出失败:', error)
@@ -126,9 +126,9 @@ class SupabaseService {
   async getCurrentUser() {
     try {
       const { data: { user }, error } = await supabase.auth.getUser()
-      
+
       if (error) throw error
-      
+
       return user
     } catch (error) {
       console.error('获取当前用户失败:', error)
@@ -145,24 +145,32 @@ class SupabaseService {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
-      
+
+      console.log(`准备在${table}表创建数据:`, payload)
+
       const { data: result, error } = await supabase
         .from(table)
         .insert(payload)
         .select()
-      
-      if (error) throw error
-      
+
+      if (error) {
+        console.error(`在${table}表创建数据失败的详细错误:`, error)
+        throw error
+      }
+
+      console.log(`在${table}表创建数据成功:`, result)
+
       return result[0]
     } catch (error) {
       console.error(`在${table}表创建数据失败:`, error)
-      
+      console.error(`失败的完整错误信息:`, JSON.stringify(error, null, 2))
+
       // 如果网络错误，将操作加入同步队列
       if (this.isNetworkError(error)) {
         this.addToSyncQueue('create', table, data)
         return { ...data, id: this.generateLocalId(), _sync_status: SYNC_STATUS.NOT_SYNCED }
       }
-      
+
       throw error
     }
   }
@@ -170,7 +178,7 @@ class SupabaseService {
   async read(table, filters = {}, options = {}) {
     try {
       let query = supabase.from(table)
-      
+
       // 应用筛选条件
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
@@ -181,33 +189,33 @@ class SupabaseService {
           }
         })
       }
-      
+
       // 应用选项
       if (options.orderBy) {
         query = query.order(options.orderBy, { ascending: options.ascending || false })
       }
-      
+
       if (options.limit) {
         query = query.limit(options.limit)
       }
-      
+
       if (options.offset) {
         query = query.offset(options.offset)
       }
-      
+
       const { data, error } = await query.select()
-      
+
       if (error) throw error
-      
+
       return data
     } catch (error) {
       console.error(`从${table}表读取数据失败:`, error)
-      
+
       // 如果网络错误，尝试从本地存储获取数据
       if (this.isNetworkError(error)) {
         return await storageManager.getItem(`supabase.${table}`, [])
       }
-      
+
       throw error
     }
   }
@@ -219,25 +227,25 @@ class SupabaseService {
         ...data,
         updated_at: new Date().toISOString()
       }
-      
+
       const { data: result, error } = await supabase
         .from(table)
         .update(payload)
         .eq('id', id)
         .select()
-      
+
       if (error) throw error
-      
+
       return result[0]
     } catch (error) {
       console.error(`在${table}表更新数据失败:`, error)
-      
+
       // 如果网络错误，将操作加入同步队列
       if (this.isNetworkError(error)) {
         this.addToSyncQueue('update', table, { id, ...data })
         return { id, ...data, _sync_status: SYNC_STATUS.NOT_SYNCED }
       }
-      
+
       throw error
     }
   }
@@ -249,19 +257,19 @@ class SupabaseService {
         .delete()
         .eq('id', id)
         .select()
-      
+
       if (error) throw error
-      
+
       return data[0]
     } catch (error) {
       console.error(`从${table}表删除数据失败:`, error)
-      
+
       // 如果网络错误，将操作加入同步队列
       if (this.isNetworkError(error)) {
         this.addToSyncQueue('delete', table, { id })
         return { id, _sync_status: SYNC_STATUS.NOT_SYNCED }
       }
-      
+
       throw error
     }
   }
@@ -272,7 +280,7 @@ class SupabaseService {
       // 获取本地存储的所有数据
       const localKeys = await storageManager.getAllKeys()
       const syncableKeys = localKeys.filter(key => key.startsWith('supabase.queue.') || key.startsWith('local.'))
-      
+
       for (const key of syncableKeys) {
         const data = await storageManager.getItem(key)
         if (data) {
@@ -280,7 +288,7 @@ class SupabaseService {
           await this.processSyncData(key, data)
         }
       }
-      
+
       console.log('本地数据同步到Supabase完成')
     } catch (error) {
       console.error('本地数据同步失败:', error)
@@ -297,12 +305,12 @@ class SupabaseService {
       timestamp: Date.now(),
       attempts: 0
     }
-    
+
     this.syncQueue.push(queueItem)
-    
+
     // 保存队列到本地存储
     await storageManager.setItem('supabase.sync.queue', this.syncQueue)
-    
+
     // 如果网络在线，立即处理队列
     if (navigator.onLine) {
       this.processSyncQueue()
@@ -314,13 +322,13 @@ class SupabaseService {
     if (this.syncInProgress || this.syncQueue.length === 0) {
       return
     }
-    
+
     this.syncInProgress = true
-    
+
     try {
       while (this.syncQueue.length > 0) {
         const item = this.syncQueue.shift()
-        
+
         try {
           await this.executeSyncItem(item)
           item._sync_status = SYNC_STATUS.SYNCED
@@ -328,17 +336,17 @@ class SupabaseService {
           console.error('处理同步项失败:', error)
           item.attempts++
           item._sync_status = SYNC_STATUS.ERROR
-          
+
           // 如果尝试次数少于3次，重新加入队列
           if (item.attempts < 3) {
             this.syncQueue.push(item)
           }
         }
       }
-      
+
       // 更新本地存储的队列
       await storageManager.setItem('supabase.sync.queue', this.syncQueue)
-      
+
     } finally {
       this.syncInProgress = false
     }
@@ -360,7 +368,7 @@ class SupabaseService {
 
   // 辅助方法
   isNetworkError(error) {
-    return error.message?.includes('NetworkError') || 
+    return error.message?.includes('NetworkError') ||
            error.code?.includes('NETWORK_ERROR') ||
            !navigator.onLine
   }
@@ -394,5 +402,15 @@ export const updateRecord = (table, id, data) => supabaseService.update(table, i
 export const deleteRecord = (table, id) => supabaseService.delete(table, id)
 export const syncData = () => supabaseService.syncLocalDataToSupabase()
 export const getSyncStatus = () => supabaseService.getSyncStatus()
+
+// 待办事项专用服务函数
+export const createTodo = (todoData) => supabaseService.create('todos', todoData)
+export const getTodos = (filters = {}, options = {}) => supabaseService.read('todos', filters, options)
+export const updateTodo = (id, todoData) => supabaseService.update('todos', id, todoData)
+export const deleteTodo = (id) => supabaseService.delete('todos', id)
+export const completeTodo = (id, completedAt = new Date().toISOString()) => supabaseService.update('todos', id, { is_completed: true, completed_at: completedAt })
+
+export const getPendingTodos = () => supabaseService.read('todos', { is_completed: false }, { orderBy: 'priority', ascending: false })
+export const getCompletedTodos = () => supabaseService.read('todos', { is_completed: true }, { orderBy: 'completed_at', ascending: false })
 
 export default supabaseService

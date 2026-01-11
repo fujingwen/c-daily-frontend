@@ -152,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useRecordStore } from "@/stores";
 import {
   MODULE_CONFIG,
@@ -232,6 +232,8 @@ const getModuleConfig = (type) => {
 const selectModule = (moduleType) => {
   currentModule.value = moduleType;
   initFormData(moduleType);
+  // 保存当前记录类型到本地存储，以便刷新页面后恢复状态
+  uni.setStorageSync('currentRecordModule', moduleType);
 };
 
 const updateFormData = (newFormData) => {
@@ -375,10 +377,10 @@ const handleSave = async () => {
 
     // 保存记录
     if (isEditing.value) {
-      recordStore.updateRecord(editingRecordId.value, formData.value);
+      await recordStore.updateRecord(editingRecordId.value, formData.value);
       showToast("更新成功", "success");
     } else {
-      recordStore.addRecord(formData.value);
+      await recordStore.addRecord(formData.value);
       showToast("保存成功", "success");
     }
 
@@ -541,7 +543,21 @@ onMounted(() => {
       initFormData(addRecordType);
       uni.removeStorageSync('addRecordType');
     }
+    // 检查本地存储中的当前记录类型（用于刷新页面后恢复状态）
+    else {
+      const savedModule = uni.getStorageSync('currentRecordModule');
+      if (savedModule) {
+        isDirectMode.value = true;
+        currentModule.value = savedModule;
+        initFormData(savedModule);
+      }
+    }
   }
+});
+
+// 页面卸载时清除本地存储中的当前记录类型
+onBeforeUnmount(() => {
+  uni.removeStorageSync('currentRecordModule');
 });
 </script>
 
@@ -719,7 +735,7 @@ onMounted(() => {
       .save-button {
         flex: 1;
         border-radius: 16rpx;
-        padding: 28rpx 20rpx;
+        // padding: 28rpx 20rpx;
         font-size: 32rpx;
         font-weight: 600;
         border: none;

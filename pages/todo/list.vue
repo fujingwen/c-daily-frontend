@@ -189,7 +189,7 @@ const getEmptyText = () => {
 const handleComplete = async (recordId, completeData) => {
   try {
     // 更新记录状态
-    const success = recordStore.updateRecord(recordId, {
+    const success = await recordStore.updateRecord(recordId, {
       isCompleted: completeData.isCompleted,
       completeRemark: completeData.completeRemark,
       completeTime: completeData.completeTime
@@ -214,7 +214,7 @@ const goToDetail = (todo) => {
 
 const goToAdd = () => {
   uni.navigateTo({
-    url: '/pages/record/add?type=todo'
+    url: '/pages/todo/add'
   })
 }
 

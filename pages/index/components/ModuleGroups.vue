@@ -245,8 +245,13 @@ const goToAddRecord = (moduleType) => {
     uni.navigateTo({
       url: "/pages/shopping/list",
     });
+  } else if (moduleType === "todo") {
+    // 对于待办事项，直接跳转到专门的添加页面
+    uni.navigateTo({
+      url: "/pages/todo/add",
+    });
   } else {
-    // 对于非tabbar页面，使用navigateTo跳转
+    // 对于其他模块，使用原有的跳转方式
     uni.setStorageSync('addRecordType', moduleType);
     uni.navigateTo({
       url: "/pages/record/add",

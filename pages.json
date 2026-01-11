@@ -74,6 +74,12 @@
       }
     },
     {
+      "path": "pages/todo/add",
+      "style": {
+        "navigationBarTitleText": "添加待办事项"
+      }
+    },
+    {
       "path": "pages/shopping/list",
       "style": {
         "navigationBarTitleText": "买买买"

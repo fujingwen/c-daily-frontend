@@ -170,10 +170,24 @@ const repeatTypes = computed(() => REPEAT_TYPES);
 const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
 
 const updateFormData = (key, value) => {
-  const newFormData = { ...props.formData, [key]: value };
+  // 处理不同类型的事件对象或直接值
+  let processedValue = value;
+  if (value && typeof value === 'object') {
+    // 处理uni-app组件的事件对象（如u-textarea）
+    if ('detail' in value && 'value' in value.detail) {
+      processedValue = value.detail.value;
+    }
+    // 处理Vue 3 v-model的事件对象
+    else if ('value' in value) {
+      processedValue = value.value;
+    }
+    // 其他情况保持原样
+  }
+
+  const newFormData = { ...props.formData, [key]: processedValue };
 
   // 当关闭循环事项时，重置所有循环相关字段
-  if (key === "isRecurring" && !value) {
+  if (key === "isRecurring" && !processedValue) {
     newFormData.repeatType = "none";
     newFormData.repeatInterval = 1;
     newFormData.repeatDayOfWeek = null;
