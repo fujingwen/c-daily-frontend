@@ -471,3 +471,12 @@ export function getThisMonthBirthdays(birthdayRecords) {
     return dateA.getDate() - dateB.getDate()
   })
 }
+
+// Supabase相关服务导出
+import supabase, { useSupabase } from '../supabase/supabase.js'
+import * as supabaseService from '../supabase/supabaseService.js'
+import * as auth from '../supabase/auth.js'
+
+export { supabase, useSupabase }
+export * from '../supabase/supabaseService.js'
+export * from '../supabase/auth.js'

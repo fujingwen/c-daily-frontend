@@ -67,6 +67,31 @@ import TodayReminders from "./components/TodayReminders.vue";
 import ModuleGroups from "./components/ModuleGroups.vue";
 import RecentRecords from "./components/RecentRecords.vue";
 
+// 直接从supabase目录导入，避免中间层可能的问题
+import { useSupabase } from "@/supabase/supabase";
+const { supabase } = useSupabase();
+const testFun = async () => {
+  try {
+    console.log('开始测试Supabase连接...')
+    let { data: records, error } = await supabase
+      .from('records')
+      .select('*')
+    if (error) {
+      console.error('查询错误:', error)
+      throw error
+    }
+    console.log('查询成功，获取到', records?.length || 0, '条记录')
+    console.log('records:', records)
+  } catch (error) {
+    console.error('查询记录失败:', error)
+  }
+}
+
+// 在组件挂载后执行测试
+onMounted(() => {
+  testFun()
+})
+
 const recordStore = useRecordStore();
 const appStore = useAppStore();
 const moduleVisibilityStore = useModuleVisibilityStore();
