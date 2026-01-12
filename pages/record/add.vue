@@ -67,8 +67,8 @@
           @update:form-data="updateFormData"
         />
 
-        <!-- 奶茶记录表单 -->
-        <MilkTeaForm
+        <!-- 咖啡记录表单 -->
+        <CoffeeForm
           v-else-if="currentModule === 'milkTea'"
           :form-data="formData"
           @update:form-data="updateFormData"
@@ -175,7 +175,7 @@ import { showToast, formatDate } from "@/utils";
 // 组件导入
 import DailyMoodForm from "./components/DailyMoodForm.vue";
 import WeightForm from "./components/WeightForm.vue";
-import MilkTeaForm from "./components/MilkTeaForm.vue";
+import CoffeeForm from "./components/CoffeeForm.vue";
 import AccountForm from "./components/AccountForm.vue";
 import TodoForm from "./components/TodoForm.vue";
 import FoodForm from "./components/FoodForm.vue";
@@ -403,7 +403,7 @@ const validateForm = () => {
       break;
     case 'milkTea':
       if (!formData.value.name) {
-        showToast("请输入奶茶名称", "none");
+        showToast("请输入咖啡名称", "none");
         return false;
       }
       break;

@@ -1,5 +1,46 @@
 <template>
-  <view class="index-page">
+  <view class="index-page" :style="{ background: themeStore.currentThemeColors.backgroundGradient }">
+    <!-- 主题切换器 -->
+    <view class="theme-switcher" v-if="showThemeSwitch">
+      <text class="theme-title">选择主题风格</text>
+      <view class="theme-list">
+        <view 
+          class="theme-item" 
+          v-for="(theme, key) in themeStore.themes" 
+          :key="key"
+          @click="switchTheme(key)"
+        >
+          <view 
+            class="theme-color" 
+            :style="{ background: theme.primary, borderColor: themeStore.currentTheme === key ? theme.accent : 'transparent' }"
+            :class="{ active: themeStore.currentTheme === key }"
+          ></view>
+          <text class="theme-name" :style="{ color: themeStore.currentTheme === key ? theme.primary : '#666' }">{{ theme.name }}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 顶部固定区域 -->
+    <view class="sticky-header" :style="{ background: themeStore.currentThemeColors.backgroundGradient }">
+      <!-- 顶部导航栏/Logo区域 -->
+      <view class="nav-header" :style="{ paddingTop: statusBarHeight + 'px' }">
+        <view class="header-content">
+          <view class="header-left">
+            <text class="title">Coffee Daily</text>
+            <text class="subtitle">记录每一个美好瞬间</text>
+          </view>
+          <view class="header-right">
+            <view @click="toggleThemeSwitch" class="icon-btn">
+              <text style="font-size: 40rpx;">🎨</text>
+            </view>
+            <view @click="openModulePopup" class="plus-btn">
+              <u-icon name="plus" color="#fff" size="22"></u-icon>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <!-- 今日提醒模块 -->
     <TodayReminders
       :weather-info="weatherInfo"
@@ -11,14 +52,34 @@
       @todo-complete="handleTodoComplete"
     />
 
-    <!-- 模块快捷入口 - 分组显示 -->
-    <ModuleGroups
-      :records="recordStore.records"
-      :module-visibility-store="moduleVisibilityStore"
-      @module-hide="handleModuleHide"
-      @module-show="handleModuleShow"
-      @show-all-modules="handleShowAllModules"
-    />
+    <!-- 模块快捷入口抽屉 -->
+    <u-popup
+      :show="showModulePopup"
+      mode="bottom"
+      border-radius="40"
+      :safe-area-inset-bottom="true"
+      :lock-scroll="true"
+      @close="closeModulePopup"
+    >
+      <view class="module-popup-content">
+        <view class="popup-header">
+          <text class="popup-title">记录生活</text>
+          <view class="close-btn" @click="closeModulePopup">
+            <u-icon name="close" color="#999" size="20"></u-icon>
+          </view>
+        </view>
+        <scroll-view scroll-y style="max-height: 70vh; padding-bottom: 40rpx;">
+          <ModuleGroups
+            :records="recordStore.records"
+            :module-visibility-store="moduleVisibilityStore"
+            @module-hide="handleModuleHide"
+            @module-show="handleModuleShow"
+            @show-all-modules="handleShowAllModules"
+            @item-click="closeModulePopup"
+          />
+        </scroll-view>
+      </view>
+    </u-popup>
 
     <!-- 最近记录 -->
     <RecentRecords :records="recordStore.records" />
@@ -56,8 +117,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { useRecordStore, useAppStore, useModuleVisibilityStore } from "@/stores";
+import { ref, onMounted, computed } from "vue";
+import { useRecordStore, useAppStore, useModuleVisibilityStore, useThemeStore } from "@/stores";
 import birthdayService from "@/utils/birthdayService.js";
 import reminderService from "@/utils/reminderService.js";
 import { vibrate } from "@/utils/hapticFeedback.js";
@@ -70,33 +131,14 @@ import RecentRecords from "./components/RecentRecords.vue";
 // 直接从supabase目录导入，避免中间层可能的问题
 import { useSupabase } from "@/supabase/supabase";
 const { supabase } = useSupabase();
-const testFun = async () => {
-  try {
-    console.log('开始测试Supabase连接...')
-    let { data: records, error } = await supabase
-      .from('records')
-      .select('*')
-    if (error) {
-      console.error('查询错误:', error)
-      throw error
-    }
-    console.log('查询成功，获取到', records?.length || 0, '条记录')
-    console.log('records:', records)
-  } catch (error) {
-    console.error('查询记录失败:', error)
-  }
-}
-
-// 在组件挂载后执行测试
-onMounted(() => {
-  testFun()
-})
 
 const recordStore = useRecordStore();
 const appStore = useAppStore();
 const moduleVisibilityStore = useModuleVisibilityStore();
+const themeStore = useThemeStore();
 
 // 响应式数据
+const statusBarHeight = ref(0);
 const weatherInfo = ref(null);
 const dailyQuote = ref('');
 const upcomingHolidays = ref([]);
@@ -108,6 +150,27 @@ const menstruationReminder = ref(null);
 const showCompleteModal = ref(false);
 const currentTodo = ref(null);
 const completeRemark = ref('');
+
+// 模块抽屉相关
+const showModulePopup = ref(false);
+const openModulePopup = () => {
+  showModulePopup.value = true;
+  vibrate.light();
+};
+const closeModulePopup = () => {
+  showModulePopup.value = false;
+};
+
+// 主题切换相关
+const showThemeSwitch = ref(false);
+const toggleThemeSwitch = () => {
+  showThemeSwitch.value = !showThemeSwitch.value;
+  vibrate.light();
+};
+const switchTheme = (themeKey) => {
+  themeStore.setTheme(themeKey);
+  vibrate.medium();
+};
 
 // 加载提醒数据
 const loadReminders = async () => {
@@ -230,6 +293,10 @@ const handleShowAllModules = async () => {
 // 生命周期
 onMounted(async () => {
   console.log('首页开始加载...')
+  
+  // 获取系统状态栏高度
+  const systemInfo = uni.getSystemInfoSync();
+  statusBarHeight.value = systemInfo.statusBarHeight || 0;
 
   recordStore.loadFromStorage()
   appStore.loadUserData()
@@ -237,34 +304,130 @@ onMounted(async () => {
   // 初始化模块可见性状态
   await moduleVisibilityStore.loadFromStorage()
 
-  console.log('记录数据:', recordStore.records.length)
-  console.log('模块可见性状态:', moduleVisibilityStore.hiddenModulesCount)
-
   // 如果没有数据，强制初始化mock数据
   if (recordStore.records.length === 0) {
     console.log('没有记录数据，初始化mock数据...')
     const { initMockData } = await import('@/mock/index.js')
     initMockData()
     recordStore.loadFromStorage()
-    console.log('Mock数据初始化完成，记录数量:', recordStore.records.length)
   }
 
   await loadReminders()
-
-  console.log('提醒数据加载完成:', {
-    weather: weatherInfo.value,
-    holidays: upcomingHolidays.value.length,
-    birthdays: upcomingBirthdays.value.length,
-    todos: pendingTodos.value.length,
-    menstruation: menstruationReminder.value
-  })
 });
 </script>
 
 <style lang="scss" scoped>
 .index-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #FFF5F4, #F8F4FF);
+  transition: background 0.3s ease;
+  padding-bottom: 40rpx;
+}
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  /* 确保背景不透明，防止滚动时内容重叠 */
+  background: inherit;
+}
+
+.nav-header {
+  padding: 0 30rpx 20rpx;
+  
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20rpx 0;
+    
+    .header-left {
+      .title {
+        font-size: 44rpx;
+        font-weight: bold;
+        color: #333;
+        display: block;
+      }
+      
+      .subtitle {
+        font-size: 24rpx;
+        color: #666;
+        display: block;
+        margin-top: 4rpx;
+      }
+    }
+    
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 24rpx;
+      
+      .icon-btn {
+        padding: 10rpx;
+      }
+      
+      .plus-btn {
+        width: 72rpx;
+        height: 72rpx;
+        background: #333;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.15);
+        
+        &:active {
+          transform: scale(0.92);
+        }
+      }
+    }
+  }
+}
+
+.theme-switcher {
+  padding: 20rpx;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  margin: 20rpx;
+  border-radius: 20rpx;
+  
+  .theme-title {
+    font-size: 24rpx;
+    color: #666;
+    margin-bottom: 16rpx;
+    display: block;
+  }
+  
+  .theme-list {
+    display: flex;
+    gap: 20rpx;
+    overflow-x: auto;
+    padding-bottom: 10rpx;
+    
+    .theme-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8rpx;
+      
+      .theme-color {
+        width: 60rpx;
+        height: 60rpx;
+        border-radius: 50%;
+        border: 4rpx solid transparent;
+        transition: all 0.3s;
+        
+        &.active {
+          transform: scale(1.1);
+          box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.2);
+        }
+      }
+      
+      .theme-name {
+        font-size: 20rpx;
+        color: #666;
+      }
+    }
+  }
 }
 
 .modal-content {
@@ -279,6 +442,30 @@ onMounted(async () => {
 
   .remark-section {
     margin-top: 20rpx;
+  }
+}
+
+.module-popup-content {
+  background: #f8f8f8;
+  border-radius: 40rpx 40rpx 0 0;
+  
+  .popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 30rpx 40rpx;
+    background: #fff;
+    border-radius: 40rpx 40rpx 0 0;
+    
+    .popup-title {
+      font-size: 32rpx;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .close-btn {
+      padding: 10rpx;
+    }
   }
 }
 </style>

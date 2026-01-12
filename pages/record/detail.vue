@@ -60,14 +60,14 @@
         </view>
       </template>
 
-      <!-- 奶茶记录 -->
+      <!-- 咖啡记录 -->
       <template v-if="record.moduleType === 'milkTea'">
         <view class="content-item">
-          <text class="item-label">奶茶名称</text>
+          <text class="item-label">咖啡名称</text>
           <text class="item-value">{{ record.name }}</text>
         </view>
         <view class="content-item" v-if="record.shop">
-          <text class="item-label">购买店铺</text>
+          <text class="item-label">咖啡店</text>
           <text class="item-value">{{ record.shop }}</text>
         </view>
         <view class="content-item">

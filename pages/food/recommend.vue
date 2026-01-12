@@ -8,7 +8,13 @@
 
     <!-- 餐次选择 -->
     <view class="meal-selector card">
-      <view class="selector-title">选择餐次</view>
+      <view class="selector-header">
+        <view class="selector-title">选择餐次</view>
+        <view class="add-btn" @click="openAddModal">
+          <text class="add-icon">+</text>
+          <text class="add-text">添加选项</text>
+        </view>
+      </view>
       <view class="meal-options">
         <view
           v-for="meal in mealTypes"
@@ -31,24 +37,32 @@
       </view>
 
       <view class="roulette-container">
-        <view
-          class="roulette-wheel"
-          :class="{ spinning: isSpinning }"
-          :style="{ transform: `rotate(${rotation}deg)` }"
-        >
+        <view class="roulette-wrapper">
           <view
-            v-for="(food, index) in wheelFoods"
-            :key="index"
-            class="roulette-item"
-            :style="{
-              transform: `rotate(${index * (360 / wheelFoods.length)}deg)`,
-              backgroundColor: getItemColor(index),
+            class="roulette-wheel"
+            :class="{ spinning: isSpinning }"
+            :style="{ 
+              transform: `rotate(${rotation}deg)`,
+              background: wheelGradient
             }"
           >
-            <text class="food-text">{{ food }}</text>
+            <view
+              v-for="(food, index) in wheelFoods"
+              :key="index"
+              class="roulette-item"
+              :style="{
+                transform: `rotate(${index * (360 / wheelFoods.length) + (360 / wheelFoods.length / 2)}deg) translateY(-140rpx)`,
+              }"
+            >
+              <text class="food-text">{{ food }}</text>
+            </view>
+          </view>
+          <!-- 中心装饰 -->
+          <view class="wheel-center">
+            <view class="center-dot"></view>
           </view>
         </view>
-        <view class="roulette-pointer">📍</view>
+        <view class="roulette-pointer"></view>
       </view>
 
       <view class="roulette-actions">
@@ -101,6 +115,11 @@
       <button class="quick-btn history-btn" @click="goToHistory">
         <text class="btn-icon">📋</text>
         <text class="btn-text">用餐记录</text>
+      </button>
+      
+      <button class="quick-btn manage-btn" @click="goToManageFoods">
+        <text class="btn-icon">⚙️</text>
+        <text class="btn-text">管理菜单</text>
       </button>
     </view>
 
@@ -165,11 +184,50 @@
         </view>
       </view>
     </view>
+
+    <!-- 添加食物弹窗 -->
+    <view v-if="showAddModal" class="modal-overlay" @click="closeAddModal">
+      <view class="modal-content" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">添加美食选项</text>
+          <text class="modal-close" @click="closeAddModal">✕</text>
+        </view>
+        <view class="modal-body">
+          <view class="input-group">
+            <text class="label">餐次</text>
+            <view class="meal-tags">
+              <view 
+                v-for="meal in mealTypes" 
+                :key="meal.value"
+                class="meal-tag"
+                :class="{ active: addForm.mealTypes.includes(meal.value) }"
+                @click="toggleMealType(meal.value)"
+              >
+                {{ meal.label }}
+              </view>
+            </view>
+          </view>
+          <view class="input-group">
+            <text class="label">食物名称</text>
+            <input 
+              class="food-input"
+              v-model="addForm.name" 
+              placeholder="请输入食物名称，如：黄焖鸡米饭"
+              :focus="true"
+            />
+          </view>
+        </view>
+        <view class="modal-footer">
+          <button class="btn-cancel" @click="closeAddModal">取消</button>
+          <button class="btn-confirm" @click="confirmAddFood">确定添加</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, reactive } from "vue";
 import { useRecordStore } from "@/stores";
 import {
   MEAL_TYPES,
@@ -185,6 +243,12 @@ const selectedMeal = ref("lunch");
 const recommendedFood = ref("");
 const isSpinning = ref(false);
 const rotation = ref(0);
+const customFoods = ref({}); // 存储自定义食物 { breakfast: [], lunch: [], ... }
+const showAddModal = ref(false);
+const addForm = reactive({
+  mealTypes: ['lunch'], // 改为数组支持多选
+  name: ''
+});
 
 // 计算属性
 const mealTypes = computed(() => MEAL_TYPES);
@@ -197,8 +261,46 @@ const recentFoodRecords = computed(() => {
 
 const wheelFoods = computed(() => {
   if (!selectedMeal.value) return [];
-  const foods = FOOD_RECOMMENDATIONS[selectedMeal.value] || [];
-  return foods.slice(0, 8); // 转盘显示8个选项
+  
+  // 获取默认推荐
+  const defaultFoods = FOOD_RECOMMENDATIONS[selectedMeal.value] || [];
+  // 获取自定义食物
+  const myFoods = customFoods.value[selectedMeal.value] || [];
+  
+  // 合并并去重
+  const allFoods = [...new Set([...myFoods, ...defaultFoods])];
+  
+  // 如果数量太多，随机取12个，优先保留自定义的
+  if (allFoods.length > 12) {
+    const others = allFoods.filter(f => !myFoods.includes(f));
+    // 打乱默认食物
+    const shuffledOthers = others.sort(() => 0.5 - Math.random());
+    return [...myFoods, ...shuffledOthers].slice(0, 12);
+  }
+  
+  return allFoods;
+});
+
+const wheelGradient = computed(() => {
+  if (wheelFoods.value.length === 0) return '#ddd';
+  
+  const colors = [
+    "#ff6b9d", "#ff9f43", "#10ac84", "#5f27cd", 
+    "#00d2d3", "#ff3838", "#2e86de", "#f368e0",
+    "#54a0ff", "#5f27cd", "#ff9f43", "#ee5253"
+  ];
+  
+  const anglePerItem = 360 / wheelFoods.value.length;
+  let gradient = 'conic-gradient(';
+  
+  wheelFoods.value.forEach((_, index) => {
+    const color = colors[index % colors.length];
+    const startAngle = index * anglePerItem;
+    const endAngle = (index + 1) * anglePerItem;
+    gradient += `${color} ${startAngle}deg ${endAngle}deg,`;
+  });
+  
+  return gradient.slice(0, -1) + ')';
 });
 
 const foodCategories = computed(() => [
@@ -240,6 +342,89 @@ const selectMeal = (mealType) => {
   recommendedFood.value = "";
 };
 
+const openAddModal = () => {
+  addForm.mealTypes = [selectedMeal.value || 'lunch'];
+  addForm.name = '';
+  showAddModal.value = true;
+};
+
+const toggleMealType = (type) => {
+  const index = addForm.mealTypes.indexOf(type);
+  if (index > -1) {
+    // 如果已经选中且不是最后一个，则移除
+    if (addForm.mealTypes.length > 1) {
+      addForm.mealTypes.splice(index, 1);
+    } else {
+      uni.showToast({ title: '至少选择一个餐次', icon: 'none' });
+    }
+  } else {
+    // 如果未选中，则添加
+    addForm.mealTypes.push(type);
+  }
+};
+
+const closeAddModal = () => {
+  showAddModal.value = false;
+};
+
+const confirmAddFood = () => {
+  if (!addForm.name.trim()) {
+    uni.showToast({ title: '请输入食物名称', icon: 'none' });
+    return;
+  }
+  
+  if (addForm.mealTypes.length === 0) {
+    uni.showToast({ title: '请至少选择一个餐次', icon: 'none' });
+    return;
+  }
+  
+  let addedCount = 0;
+  
+  addForm.mealTypes.forEach(type => {
+    if (!customFoods.value[type]) {
+      customFoods.value[type] = [];
+    }
+    
+    // 检查是否重复
+    if (!customFoods.value[type].includes(addForm.name)) {
+      // 添加到列表头部
+      customFoods.value[type].unshift(addForm.name);
+      addedCount++;
+    }
+  });
+  
+  if (addedCount > 0) {
+    // 保存到本地存储
+    uni.setStorageSync('customFoods', JSON.stringify(customFoods.value));
+    uni.showToast({ title: `成功添加到${addedCount}个餐次`, icon: 'success' });
+    closeAddModal();
+    
+    // 如果当前选中的是添加的餐次之一，重置转盘
+    if (addForm.mealTypes.includes(selectedMeal.value)) {
+      recommendedFood.value = "";
+    }
+  } else {
+    uni.showToast({ title: '该食物在所选餐次中已存在', icon: 'none' });
+  }
+};
+
+const goToManageFoods = () => {
+  uni.navigateTo({
+    url: '/pages/food/manage'
+  });
+};
+
+const loadCustomFoods = () => {
+  try {
+    const saved = uni.getStorageSync('customFoods');
+    if (saved) {
+      customFoods.value = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('加载自定义食物失败', e);
+  }
+};
+
 const spinWheel = () => {
   if (isSpinning.value || !selectedMeal.value || wheelFoods.value.length === 0)
     return;
@@ -279,7 +464,8 @@ const spinWheel = () => {
 const quickRandom = () => {
   if (!selectedMeal.value) return;
 
-  const foods = FOOD_RECOMMENDATIONS[selectedMeal.value];
+  // 使用当前的 wheelFoods 池子，这样也包含了自定义食物
+  const foods = wheelFoods.value;
   if (foods && foods.length > 0) {
     const randomIndex = Math.floor(Math.random() * foods.length);
     recommendedFood.value = foods[randomIndex];
@@ -395,6 +581,7 @@ const getMealEmoji = (mealType) => {
 // 生命周期
 onMounted(() => {
   recordStore.loadFromStorage();
+  loadCustomFoods();
 
   // 根据当前时间自动选择餐次
   const hour = new Date().getHours();
@@ -436,15 +623,45 @@ onMounted(() => {
   }
 }
 
-.meal-selector {
-  margin: 20rpx;
+  .meal-selector {
+    margin: 20rpx;
 
-  .selector-title {
-    font-size: 32rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 20rpx;
-  }
+    .selector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20rpx;
+
+      .selector-title {
+        font-size: 32rpx;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .add-btn {
+        display: flex;
+        align-items: center;
+        gap: 4rpx;
+        padding: 8rpx 16rpx;
+        background: #f0f0f0;
+        border-radius: 20rpx;
+        
+        .add-icon {
+          font-size: 28rpx;
+          color: #ff6347;
+          font-weight: bold;
+        }
+        
+        .add-text {
+          font-size: 24rpx;
+          color: #666;
+        }
+        
+        &:active {
+          opacity: 0.8;
+        }
+      }
+    }
 
   .meal-options {
     display: flex;
@@ -501,52 +718,102 @@ onMounted(() => {
 
   .roulette-container {
     position: relative;
-    width: 500rpx;
-    height: 500rpx;
+    width: 560rpx;
+    height: 560rpx;
     margin: 0 auto 40rpx;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
-    .roulette-wheel {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
+    .roulette-wrapper {
       position: relative;
-      border: 8rpx solid #333;
-      transition: transform 3s cubic-bezier(0.23, 1, 0.32, 1);
-
-      &.spinning {
+      width: 500rpx;
+      height: 500rpx;
+      border-radius: 50%;
+      box-shadow: 0 10rpx 30rpx rgba(0,0,0,0.2);
+      border: 10rpx solid white;
+      overflow: hidden;
+      
+      .roulette-wheel {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        position: relative;
         transition: transform 3s cubic-bezier(0.23, 1, 0.32, 1);
-      }
 
-      .roulette-item {
+        &.spinning {
+          transition: transform 3s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .roulette-item {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          top: 0;
+          left: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          /* transform-origin is center by default for absolute full size */
+          
+          .food-text {
+            font-size: 26rpx;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.3);
+            /* Text is positioned by the parent transform */
+            white-space: nowrap;
+          }
+        }
+      }
+      
+      .wheel-center {
         position: absolute;
-        width: 50%;
-        height: 50%;
         top: 50%;
         left: 50%;
-        transform-origin: 0 0;
+        transform: translate(-50%, -50%);
+        width: 100rpx;
+        height: 100rpx;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.1);
         display: flex;
         align-items: center;
         justify-content: center;
-        clip-path: polygon(0 0, 100% 0, 50% 100%);
-
-        .food-text {
-          font-size: 24rpx;
-          color: white;
-          font-weight: bold;
-          text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
-          transform: rotate(-22.5deg);
-          margin-top: -60rpx;
+        z-index: 5;
+        
+        .center-dot {
+          width: 20rpx;
+          height: 20rpx;
+          background: #ff6347;
+          border-radius: 50%;
         }
       }
     }
 
     .roulette-pointer {
       position: absolute;
-      top: -20rpx;
+      top: -10rpx;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 40rpx;
+      width: 0;
+      height: 0;
+      border-left: 20rpx solid transparent;
+      border-right: 20rpx solid transparent;
+      border-top: 50rpx solid #ff6347;
+      filter: drop-shadow(0 4rpx 4rpx rgba(0,0,0,0.2));
       z-index: 10;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        top: -50rpx;
+        left: -10rpx;
+        width: 20rpx;
+        height: 20rpx;
+        background: #a12c15;
+        border-radius: 50%;
+      }
     }
   }
 
@@ -794,6 +1061,115 @@ onMounted(() => {
     .category-name {
       font-size: 26rpx;
       color: #333;
+    }
+  }
+}
+
+// 弹窗样式
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  
+  .modal-content {
+    width: 600rpx;
+    background: white;
+    border-radius: 24rpx;
+    padding: 32rpx;
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32rpx;
+      
+      .modal-title {
+        font-size: 32rpx;
+        font-weight: bold;
+        color: #333;
+      }
+      
+      .modal-close {
+        font-size: 40rpx;
+        color: #999;
+        line-height: 1;
+        padding: 10rpx;
+      }
+    }
+    
+    .modal-body {
+      margin-bottom: 32rpx;
+      
+      .input-group {
+        margin-bottom: 24rpx;
+        
+        .label {
+          display: block;
+          font-size: 28rpx;
+          color: #666;
+          margin-bottom: 16rpx;
+        }
+        
+        .meal-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16rpx;
+          
+          .meal-tag {
+            padding: 12rpx 24rpx;
+            background: #f5f5f5;
+            border-radius: 30rpx;
+            font-size: 26rpx;
+            color: #666;
+            
+            &.active {
+              background: #ff6347;
+              color: white;
+            }
+          }
+        }
+        
+        .food-input {
+          width: 100%;
+          height: 80rpx;
+          background: #f8f8f8;
+          border-radius: 12rpx;
+          padding: 0 24rpx;
+          font-size: 28rpx;
+          box-sizing: border-box;
+        }
+      }
+    }
+    
+    .modal-footer {
+      display: flex;
+      gap: 20rpx;
+      
+      button {
+        flex: 1;
+        height: 80rpx;
+        line-height: 80rpx;
+        border-radius: 40rpx;
+        font-size: 28rpx;
+        border: none;
+        
+        &.btn-cancel {
+          background: #f5f5f5;
+          color: #666;
+        }
+        
+        &.btn-confirm {
+          background: #ff6347;
+          color: white;
+        }
+      }
     }
   }
 }

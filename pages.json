@@ -9,7 +9,8 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "奶茶与日常",
+        "navigationBarTitleText": "Coffee Daily",
+        "navigationStyle": "custom",
         "enablePullDownRefresh": false
       }
     },
@@ -144,7 +145,7 @@
   },
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "奶茶与日常",
+    "navigationBarTitleText": "Coffee Daily",
     "navigationBarBackgroundColor": "#F8F8F8",
     "backgroundColor": "#F8F8F8"
   }

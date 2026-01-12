@@ -2,7 +2,7 @@
   <view class="recent-records">
     <view class="section-header">
       <text class="section-title">最近记录</text>
-      <text class="section-more" @click="goToRecordList">查看全部</text>
+      <text class="section-more" @click="goToRecordList" :style="{ color: themeColors.primary }">查看全部</text>
     </view>
 
     <view class="record-list" v-if="recentRecords.length > 0">
@@ -12,15 +12,15 @@
         :key="record.recordId"
         @click="goToRecordDetail(record)"
       >
-        <view class="record-header">
-          <view class="record-module">
-            <text class="module-emoji">{{ getModuleConfig(record.moduleType).icon }}</text>
-            <text class="module-text">{{ getModuleConfig(record.moduleType).name }}</text>
-          </view>
-          <text class="record-time">{{ formatRelativeTime(record.createTime) }}</text>
+        <view class="record-icon-box" :style="{ background: '#f8f8f8' }">
+          <text class="record-icon">{{ getModuleConfig(record.moduleType).icon }}</text>
         </view>
         <view class="record-content">
-          <text class="content-text">{{ getRecordSummary(record) }}</text>
+          <view class="record-top">
+            <text class="module-name">{{ getModuleConfig(record.moduleType).name }}</text>
+            <text class="record-time">{{ formatRelativeTime(record.createTime) }}</text>
+          </view>
+          <text class="record-detail">{{ getRecordSummary(record) }}</text>
         </view>
       </view>
     </view>
@@ -35,10 +35,14 @@
 import { computed } from 'vue';
 import { MODULE_CONFIG } from '@/utils/constants';
 import { formatRelativeTime } from '@/utils';
+import { useThemeStore } from "@/stores";
 
 const props = defineProps({
   records: Array
 });
+
+const themeStore = useThemeStore();
+const themeColors = computed(() => themeStore.currentThemeColors);
 
 // 计算属性
 const recentRecords = computed(() => {
@@ -97,16 +101,16 @@ const goToRecordList = () => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20rpx;
+    padding: 0 4rpx;
 
     .section-title {
-      font-size: 32rpx;
+      font-size: 30rpx;
       font-weight: bold;
       color: #333;
     }
 
     .section-more {
-      font-size: 28rpx;
-      color: #667eea;
+      font-size: 26rpx;
     }
   }
 
@@ -114,43 +118,55 @@ const goToRecordList = () => {
     .record-item {
       background: white;
       border-radius: 20rpx;
-      padding: 24rpx;
-      box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+      padding: 20rpx;
+      box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.03);
       margin-bottom: 16rpx;
-
-      .record-header {
+      display: flex;
+      align-items: center;
+      gap: 20rpx;
+      
+      .record-icon-box {
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 16rpx;
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        margin-bottom: 12rpx;
-
-        .record-module {
-          display: flex;
-          align-items: center;
-          gap: 8rpx;
-
-          .module-emoji {
-            font-size: 24rpx;
-          }
-
-          .module-text {
-            font-size: 28rpx;
-            color: #333;
-            font-weight: 500;
-          }
-        }
-
-        .record-time {
-          font-size: 24rpx;
-          color: #999;
+        justify-content: center;
+        
+        .record-icon {
+          font-size: 40rpx;
         }
       }
-
+      
       .record-content {
-        .content-text {
-          font-size: 28rpx;
+        flex: 1;
+        
+        .record-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8rpx;
+          
+          .module-name {
+            font-size: 26rpx;
+            font-weight: bold;
+            color: #333;
+          }
+          
+          .record-time {
+            font-size: 22rpx;
+            color: #999;
+          }
+        }
+        
+        .record-detail {
+          font-size: 24rpx;
           color: #666;
-          line-height: 1.4;
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 500rpx;
         }
       }
     }

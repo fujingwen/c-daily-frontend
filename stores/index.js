@@ -6,3 +6,6 @@ export { useAppStore } from './app.js'
 
 // 导出记录数据store
 export { useRecordStore } from './record.js'
+
+// 导出主题store
+export { useThemeStore } from './theme.js'

@@ -1,152 +1,100 @@
 <template>
   <view v-if="hasAnyReminder" class="today-reminders">
-    <!-- 今日提醒卡片 -->
-    <view class="reminders-card">
-      <view class="reminders-header">
-        <view class="header-left">
-          <text class="header-icon">📋</text>
-          <text class="header-title">今日提醒</text>
-        </view>
-        <text class="header-date">{{
-          formatDate(Date.now(), "YYYY年MM月DD日")
-        }}</text>
-      </view>
-
-      <!-- 天气信息和今日语录 -->
-      <view class="weather-card" v-if="weatherInfo">
-        <!-- 天气信息行 -->
-        <view class="weather-row">
-          <text class="weather-icon">{{ weatherInfo.emoji }}</text>
-          <view class="weather-content">
-            <text class="weather-temp">{{ weatherInfo.desc }} {{ weatherInfo.temp }}</text>
-            <text class="weather-desc">{{ weatherInfo.tip }}</text>
+    <!-- 顶部概览卡片 (日期+天气+语录) -->
+    <view class="overview-card" :style="{ background: themeColors.surface }">
+      <view class="date-weather-row">
+        <view class="date-info">
+          <text class="day-text" :style="{ color: themeColors.primary }">{{ formatDate(Date.now(), "DD") }}</text>
+          <view class="month-year">
+            <text class="month-text">{{ formatDate(Date.now(), "MM月") }}</text>
+            <text class="weekday-text">{{ formatDate(Date.now(), "dddd") }}</text>
           </view>
         </view>
-
-        <!-- 今日语录 -->
-        <view class="quote-section" v-if="dailyQuote">
-          <view class="quote-divider"></view>
-          <view class="quote-content">
-            <text class="quote-icon">今日语录：</text>
-            <text class="quote-text">{{ dailyQuote }}</text>
+        
+        <view class="weather-info" v-if="weatherInfo">
+          <view class="weather-main">
+            <text class="weather-icon">{{ weatherInfo.emoji }}</text>
+            <text class="weather-temp">{{ weatherInfo.temp }}</text>
           </view>
+          <text class="weather-desc">{{ weatherInfo.desc }} | {{ weatherInfo.tip }}</text>
         </view>
       </view>
-
-      <!-- 待办事项提醒 -->
-      <view class="todo-section" v-if="pendingTodos && pendingTodos.length > 0">
-        <view class="section-header">
-          <text class="section-icon">✅</text>
-          <text class="section-title"
-            >待办事项 ({{ pendingTodos.length }}项)</text
-          >
-        </view>
-        <view class="todo-list">
-          <view
-            v-for="todo in pendingTodos.slice(0, 3)"
-            :key="todo.recordId"
-            class="todo-item"
-            @click="goToTodoDetail(todo.recordId)"
-          >
-            <text class="todo-icon">📄</text>
-            <view class="todo-content">
-              <text class="todo-text">{{ todo.content }}</text>
-              <text class="todo-days">{{ getTodoDaysText(todo) }}</text>
-            </view>
-            <view class="todo-status">
-              <view class="action-buttons">
-                <!-- 完成按钮 -->
-                <view
-                  class="action-button complete-button"
-                  @click.stop="handleTodoComplete(todo)"
-                >
-                  <text class="action-icon">✓</text>
-                </view>
-                <!-- 关闭按钮 -->
-                <view
-                  class="action-button close-button"
-                  @click.stop="handleTodoClose(todo)"
-                >
-                  <text class="action-icon">✕</text>
-                </view>
-              </view>
-            </view>
-          </view>
-        </view>
-        <!-- 显示更多提示 -->
-        <view
-          v-if="pendingTodos.length > 3"
-          class="more-todos"
-          @click="goToTodoList"
-        >
-          <text class="more-text"
-            >还有 {{ pendingTodos.length - 3 }} 项待办事项</text
-          >
-          <text class="more-arrow">→</text>
-        </view>
+      
+      <view class="quote-section" v-if="dailyQuote">
+        <text class="quote-mark">"</text>
+        <text class="quote-text">{{ dailyQuote }}</text>
       </view>
     </view>
 
-    <!-- 经期提醒卡片 -->
-    <view class="menstruation-card" v-if="menstruationReminder">
-      <text class="card-title">经期提醒</text>
-      <view class="menstruation-item">
-        <text class="menstruation-icon">{{ menstruationReminder.emoji }}</text>
-        <view class="menstruation-content">
-          <text class="menstruation-message">{{
-            menstruationReminder.message
-          }}</text>
+    <!-- 提醒列表 -->
+    <view class="reminders-list">
+      <!-- 经期提醒 -->
+      <view class="reminder-item" v-if="menstruationReminder" :style="{ borderLeftColor: '#ff6b9d' }">
+        <view class="reminder-icon-box" :style="{ background: '#fff0f6' }">
+          <text class="reminder-icon">{{ menstruationReminder.emoji }}</text>
+        </view>
+        <view class="reminder-content">
+          <text class="reminder-title">经期提醒</text>
+          <text class="reminder-desc">{{ menstruationReminder.message }}</text>
         </view>
       </view>
-    </view>
 
-    <!-- 生日提醒卡片 -->
-    <view
-      class="birthday-card"
-      v-if="upcomingBirthdays && upcomingBirthdays.length > 0"
-    >
-      <text class="card-title">生日提醒</text>
-      <view
-        v-for="birthday in upcomingBirthdays.slice(0, 1)"
+      <!-- 生日提醒 -->
+      <view 
+        class="reminder-item" 
+        v-for="birthday in upcomingBirthdays.slice(0, 1)" 
         :key="birthday.recordId"
-        class="birthday-item"
         @click="goToBirthdayDetail(birthday.recordId)"
+        :style="{ borderLeftColor: themeColors.warning }"
       >
-        <text class="birthday-icon">🎂</text>
-        <view class="birthday-content">
-          <text class="birthday-name">{{ birthday.name }}</text>
-          <view class="birthday-info">
-            <text class="calendar-icon">📅</text>
-            <text class="birthday-text"
-              >{{ birthday.name }}的{{ birthday.age }}岁生日还有{{
-                birthday.daysUntil
-              }}天</text
-            >
-          </view>
+        <view class="reminder-icon-box" :style="{ background: adjustOpacity(themeColors.warning, 0.1) }">
+          <text class="reminder-icon">🎂</text>
+        </view>
+        <view class="reminder-content">
+          <text class="reminder-title">{{ birthday.name }}的生日</text>
+          <text class="reminder-desc">还有 {{ birthday.daysUntil }} 天 ({{ birthday.age }}岁)</text>
         </view>
       </view>
-    </view>
 
-    <!-- 节日提醒卡片 -->
-    <view
-      class="holiday-card"
-      v-if="upcomingHolidays && upcomingHolidays.length > 0"
-    >
-      <text class="card-title">节日提醒</text>
-      <view
-        v-for="(holiday, index) in upcomingHolidays.slice(0, 1)"
+      <!-- 节日提醒 -->
+      <view 
+        class="reminder-item" 
+        v-for="(holiday, index) in upcomingHolidays.slice(0, 1)" 
         :key="index"
-        class="holiday-item"
+        :style="{ borderLeftColor: themeColors.success }"
       >
-        <text class="holiday-icon">{{ holiday.emoji }}</text>
-        <view class="holiday-content">
-          <text class="holiday-name">{{ holiday.name }}</text>
-          <view class="holiday-info">
-            <text class="calendar-icon">📅</text>
-            <text class="holiday-text"
-              >还有{{ holiday.daysUntil }}天就是{{ holiday.name
-              }}{{ holiday.holiday ? "（放假）" : "" }}</text
-            >
+        <view class="reminder-icon-box" :style="{ background: adjustOpacity(themeColors.success, 0.1) }">
+          <text class="reminder-icon">{{ holiday.emoji }}</text>
+        </view>
+        <view class="reminder-content">
+          <text class="reminder-title">{{ holiday.name }}</text>
+          <text class="reminder-desc">还有 {{ holiday.daysUntil }} 天 {{ holiday.holiday ? "（放假）" : "" }}</text>
+        </view>
+      </view>
+
+      <!-- 待办事项 -->
+      <view class="todo-group" v-if="pendingTodos && pendingTodos.length > 0">
+        <view class="group-header">
+          <text class="group-title">待办事项 ({{ pendingTodos.length }})</text>
+          <text class="group-more" v-if="pendingTodos.length > 3" @click="goToTodoList">查看全部</text>
+        </view>
+        
+        <view 
+          v-for="todo in pendingTodos.slice(0, 3)" 
+          :key="todo.recordId"
+          class="todo-simple-item"
+          @click="goToTodoDetail(todo.recordId)"
+          :style="{ background: themeColors.surface }"
+        >
+          <view class="todo-check" @click.stop="handleTodoComplete(todo)" :style="{ borderColor: themeColors.primary }">
+            <view class="todo-check-inner" :style="{ background: themeColors.primary }"></view>
+          </view>
+          <view class="todo-body">
+            <text class="todo-text">{{ todo.content }}</text>
+            <text class="todo-meta" :style="{ color: getTodoColor(todo) }">{{ getTodoDaysText(todo) }}</text>
+          </view>
+          <view class="todo-close" @click.stop="handleTodoClose(todo)">
+            <text>✕</text>
           </view>
         </view>
       </view>
@@ -155,7 +103,7 @@
 
   <!-- 自定义确认弹窗 -->
   <view v-if="showConfirmModal" class="modal-overlay" @click="closeModal">
-    <view class="modal-content" @click.stop>
+    <view class="modal-content" @click.stop :style="{ background: themeColors.surface }">
       <view class="modal-header">
         <text class="modal-title">{{ modalData.title }}</text>
       </view>
@@ -168,12 +116,17 @@
             class="note-textarea"
             :placeholder="modalData.placeholder"
             maxlength="200"
+            :style="{ background: themeColors.background }"
           />
         </view>
       </view>
       <view class="modal-footer">
         <button class="modal-button cancel-button" @click="closeModal">取消</button>
-        <button class="modal-button confirm-button" @click="confirmAction">{{ modalData.confirmText }}</button>
+        <button 
+          class="modal-button confirm-button" 
+          @click="confirmAction"
+          :style="{ background: themeColors.primary, color: '#fff' }"
+        >{{ modalData.confirmText }}</button>
       </view>
     </view>
   </view>
@@ -182,6 +135,7 @@
 <script setup>
 import { computed, ref } from "vue";
 import { formatDate } from "@/utils";
+import { useThemeStore } from "@/stores";
 
 const props = defineProps({
   weatherInfo: Object,
@@ -193,6 +147,22 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["todo-complete", "todo-close"]);
+const themeStore = useThemeStore();
+const themeColors = computed(() => themeStore.currentThemeColors);
+
+// 辅助函数：调整颜色透明度
+const adjustOpacity = (hex, opacity) => {
+  let c;
+  if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+      c= hex.substring(1).split('');
+      if(c.length== 3){
+          c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+      }
+      c= '0x'+c.join('');
+      return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+opacity+')';
+  }
+  return hex;
+}
 
 // 弹窗相关数据
 const showConfirmModal = ref(false);
@@ -246,84 +216,55 @@ const confirmAction = () => {
 
 // 计算属性
 const hasAnyReminder = computed(() => {
-  const hasReminder =
-    props.weatherInfo ||
+  return props.weatherInfo ||
     props.dailyQuote ||
     (props.upcomingHolidays && props.upcomingHolidays.length > 0) ||
     (props.upcomingBirthdays && props.upcomingBirthdays.length > 0) ||
     (props.pendingTodos && props.pendingTodos.length > 0) ||
     props.menstruationReminder;
-
-  console.log("TodayReminders hasAnyReminder:", {
-    weather: !!props.weatherInfo,
-    quote: !!props.dailyQuote,
-    holidays: props.upcomingHolidays?.length || 0,
-    birthdays: props.upcomingBirthdays?.length || 0,
-    todos: props.pendingTodos?.length || 0,
-    menstruation: !!props.menstruationReminder,
-    result: hasReminder,
-  });
-
-  return hasReminder;
 });
 
 // 获取待办事项天数文本
 const getTodoDaysText = (todo) => {
   if (todo.urgency === "overdue") {
-    // 计算逾期天数
     if (todo.deadline) {
       const deadline = new Date(todo.deadline);
       const today = new Date();
-      const daysDiff = Math.ceil(
-        (today.getTime() - deadline.getTime()) / (1000 * 3600 * 24)
-      );
+      const daysDiff = Math.ceil((today.getTime() - deadline.getTime()) / (1000 * 3600 * 24));
       return `已逾期${daysDiff}天`;
     }
     return "已逾期";
   } else if (todo.urgency === "today") {
     return "今天截止";
-  } else if (todo.urgency === "urgent") {
-    if (todo.deadline) {
-      const deadline = new Date(todo.deadline);
-      const today = new Date();
-      const daysDiff = Math.ceil(
-        (deadline.getTime() - today.getTime()) / (1000 * 3600 * 24)
-      );
-      return `${daysDiff}天后截止`;
-    }
-    return "即将截止";
   } else if (todo.deadline) {
     const deadline = new Date(todo.deadline);
     const today = new Date();
-    const daysDiff = Math.ceil(
-      (deadline.getTime() - today.getTime()) / (1000 * 3600 * 24)
-    );
+    const daysDiff = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 3600 * 24));
     return `${daysDiff}天后截止`;
   }
-  return "无截止日期";
+  return "";
+};
+
+const getTodoColor = (todo) => {
+  if (todo.urgency === "overdue") return themeColors.value.error;
+  if (todo.urgency === "today") return themeColors.value.warning;
+  return themeColors.value.textSecondary;
 };
 
 // 方法
 const goToTodoDetail = (recordId) => {
-  uni.navigateTo({
-    url: `/pages/record/detail?id=${recordId}`,
-  });
+  uni.navigateTo({ url: `/pages/record/detail?id=${recordId}` });
 };
 
 const goToTodoList = () => {
-  uni.navigateTo({
-    url: "/pages/todo/list",
-  });
+  uni.navigateTo({ url: "/pages/todo/list" });
 };
 
 const goToBirthdayDetail = (recordId) => {
-  uni.navigateTo({
-    url: `/pages/birthday/detail?id=${recordId}`,
-  });
+  uni.navigateTo({ url: `/pages/birthday/detail?id=${recordId}` });
 };
 
 const handleTodoComplete = (todo) => {
-  console.log('handleTodoComplete called', todo);
   currentTodo.value = todo;
   currentAction.value = 'complete';
   modalData.value = {
@@ -333,11 +274,9 @@ const handleTodoComplete = (todo) => {
     confirmText: '完成'
   };
   showConfirmModal.value = true;
-  console.log('showConfirmModal set to true');
 };
 
 const handleTodoClose = (todo) => {
-  console.log('handleTodoClose called', todo);
   currentTodo.value = todo;
   currentAction.value = 'close';
   modalData.value = {
@@ -347,7 +286,6 @@ const handleTodoClose = (todo) => {
     confirmText: '关闭'
   };
   showConfirmModal.value = true;
-  console.log('showConfirmModal set to true');
 };
 </script>
 
@@ -357,408 +295,220 @@ const handleTodoClose = (todo) => {
   margin-bottom: 20rpx;
 }
 
-// 今日提醒主卡片
-.reminders-card {
-  background: #fff;
-  border-radius: 20rpx;
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
-
-  .reminders-header {
+.overview-card {
+  border-radius: 24rpx;
+  padding: 30rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  
+  .date-weather-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20rpx;
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 8rpx;
-
-      .header-icon {
-        font-size: 24rpx;
-      }
-
-      .header-title {
-        font-size: 32rpx;
-        font-weight: bold;
-        color: #333;
-      }
-    }
-
-    .header-date {
-      font-size: 24rpx;
-      color: #999;
-    }
-  }
-
-  .weather-card {
-    padding: 20rpx;
-    background: linear-gradient(135deg, #ffe4e6, #e6f3ff);
-    border-radius: 16rpx;
-    margin-bottom: 12rpx;
-
-    .weather-row {
+    align-items: flex-start;
+    margin-bottom: 24rpx;
+    
+    .date-info {
       display: flex;
       align-items: center;
       gap: 16rpx;
-
-      .weather-icon {
-        font-size: 48rpx;
+      
+      .day-text {
+        font-size: 64rpx;
+        font-weight: bold;
+        line-height: 1;
       }
-
-      .weather-content {
-        flex: 1;
-
+      
+      .month-year {
+        display: flex;
+        flex-direction: column;
+        
+        .month-text {
+          font-size: 24rpx;
+          color: #666;
+          font-weight: 500;
+        }
+        
+        .weekday-text {
+          font-size: 24rpx;
+          color: #999;
+        }
+      }
+    }
+    
+    .weather-info {
+      text-align: right;
+      
+      .weather-main {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8rpx;
+        margin-bottom: 4rpx;
+        
+        .weather-icon {
+          font-size: 32rpx;
+        }
+        
         .weather-temp {
           font-size: 32rpx;
           font-weight: bold;
           color: #333;
-          display: block;
-          margin-bottom: 4rpx;
-        }
-
-        .weather-desc {
-          font-size: 24rpx;
-          color: #666;
         }
       }
-    }
-
-    .quote-section {
-      .quote-divider {
-        height: 1rpx;
-        background: rgba(255, 255, 255, 0.3);
-        margin: 16rpx 0 12rpx 0;
-      }
-
-      .quote-content {
-        display: flex;
-        align-items: flex-start;
-        gap: 12rpx;
-
-        .quote-icon {
-          font-size: 24rpx;
-          margin-top: 2rpx;
-        }
-
-        .quote-text {
-          flex: 1;
-          font-size: 26rpx;
-          color: #555;
-          line-height: 1.4;
-          font-style: italic;
-        }
+      
+      .weather-desc {
+        font-size: 22rpx;
+        color: #999;
       }
     }
   }
-
-  .todo-section {
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 8rpx;
-      margin-bottom: 16rpx;
-
-      .section-icon {
-        font-size: 24rpx;
-      }
-
-      .section-title {
-        font-size: 28rpx;
-        font-weight: 600;
-        color: #333;
-      }
+  
+  .quote-section {
+    position: relative;
+    padding-left: 24rpx;
+    
+    .quote-mark {
+      position: absolute;
+      left: 0;
+      top: -10rpx;
+      font-size: 40rpx;
+      color: #eee;
+      font-family: serif;
     }
-
-    .todo-list {
-      .todo-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 12rpx;
-        padding: 12rpx 0;
-        border-bottom: 1rpx solid #f0f0f0;
-
-        &:last-child {
-          border-bottom: none;
-        }
-
-        .todo-icon {
-          font-size: 24rpx;
-          margin-top: 4rpx;
-        }
-
-        .todo-content {
-          flex: 1;
-
-          .todo-text {
-            font-size: 28rpx;
-            color: #333;
-            display: block;
-            line-height: 1.4;
-            margin-bottom: 4rpx;
-          }
-
-          .todo-days {
-            font-size: 24rpx;
-            color: #999;
-            display: block;
-            line-height: 1.2;
-          }
-        }
-
-        .todo-status {
-          display: flex;
-          align-items: flex-start;
-          margin-top: 4rpx;
-
-          .action-buttons {
-            display: flex;
-            gap: 8rpx;
-
-            .action-button {
-              width: 32rpx;
-              height: 32rpx;
-              border-radius: 6rpx;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.3s;
-              cursor: pointer;
-
-              .action-icon {
-                font-size: 18rpx;
-                font-weight: bold;
-              }
-
-              &:active {
-                transform: scale(0.95);
-              }
-
-              &.complete-button {
-                background: #4caf50;
-                border: 2rpx solid #4caf50;
-
-                .action-icon {
-                  color: white;
-                }
-
-                &:hover {
-                  background: #45a049;
-                  border-color: #45a049;
-                }
-              }
-
-              &.close-button {
-                background: #f44336;
-                border: 2rpx solid #f44336;
-
-                .action-icon {
-                  color: white;
-                }
-
-                &:hover {
-                  background: #da190b;
-                  border-color: #da190b;
-                }
-              }
-            }
-          }
-        }
-      }
+    
+    .quote-text {
+      font-size: 26rpx;
+      color: #666;
+      font-style: italic;
+      line-height: 1.5;
     }
+  }
+}
 
-    .more-todos {
+.reminders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.reminder-item {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  border-left: 8rpx solid #ccc;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.03);
+  
+  .reminder-icon-box {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 12rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .reminder-icon {
+      font-size: 40rpx;
+    }
+  }
+  
+  .reminder-content {
+    flex: 1;
+    
+    .reminder-title {
+      font-size: 28rpx;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 4rpx;
+      display: block;
+    }
+    
+    .reminder-desc {
+      font-size: 24rpx;
+      color: #666;
+    }
+  }
+}
+
+.todo-group {
+  margin-top: 10rpx;
+  
+  .group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16rpx;
+    padding: 0 4rpx;
+    
+    .group-title {
+      font-size: 28rpx;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .group-more {
+      font-size: 24rpx;
+      color: #999;
+    }
+  }
+  
+  .todo-simple-item {
+    background: #fff;
+    border-radius: 16rpx;
+    padding: 20rpx;
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+    margin-bottom: 12rpx;
+    box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.03);
+    
+    .todo-check {
+      width: 36rpx;
+      height: 36rpx;
+      border-radius: 50%;
+      border: 2rpx solid #ccc;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8rpx;
-      padding: 16rpx;
-      margin-top: 12rpx;
-      background: rgba(102, 126, 234, 0.05);
-      border-radius: 12rpx;
-      border: 1rpx dashed rgba(102, 126, 234, 0.3);
-      transition: all 0.3s;
-
-      &:active {
-        background: rgba(102, 126, 234, 0.1);
+      
+      .todo-check-inner {
+        width: 20rpx;
+        height: 20rpx;
+        border-radius: 50%;
+        opacity: 0;
+        transition: opacity 0.2s;
       }
-
-      .more-text {
-        font-size: 26rpx;
-        color: #667eea;
-      }
-
-      .more-arrow {
-        font-size: 20rpx;
-        color: #667eea;
+      
+      &:active .todo-check-inner {
+        opacity: 0.5;
       }
     }
-  }
-}
-
-// 经期提醒卡片
-.menstruation-card {
-  background: linear-gradient(135deg, #ffe4e6, #f8e6ff);
-  border-radius: 20rpx;
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-
-  .card-title {
-    font-size: 28rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 16rpx;
-    display: block;
-  }
-
-  .menstruation-item {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
-
-    .menstruation-icon {
-      font-size: 32rpx;
-    }
-
-    .menstruation-content {
+    
+    .todo-body {
       flex: 1;
-
-      .menstruation-message {
-        font-size: 32rpx;
-        font-weight: bold;
+      
+      .todo-text {
+        font-size: 28rpx;
         color: #333;
+        margin-bottom: 4rpx;
         display: block;
-        margin-bottom: 8rpx;
       }
-
-      .menstruation-info {
-        display: flex;
-        align-items: center;
-        gap: 8rpx;
-
-        .calendar-icon {
-          font-size: 20rpx;
-        }
-
-        .days-text {
-          font-size: 24rpx;
-          color: #ff2d92;
-          font-weight: 600;
-        }
+      
+      .todo-meta {
+        font-size: 22rpx;
       }
+    }
+    
+    .todo-close {
+      padding: 10rpx;
+      color: #ccc;
+      font-size: 24rpx;
     }
   }
 }
 
-// 生日提醒卡片
-.birthday-card {
-  background: linear-gradient(135deg, #e6f3ff, #e6ffe6);
-  border-radius: 20rpx;
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-
-  .card-title {
-    font-size: 28rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 16rpx;
-    display: block;
-  }
-
-  .birthday-item {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
-
-    .birthday-icon {
-      font-size: 32rpx;
-    }
-
-    .birthday-content {
-      flex: 1;
-
-      .birthday-name {
-        font-size: 32rpx;
-        font-weight: bold;
-        color: #333;
-        display: block;
-        margin-bottom: 8rpx;
-      }
-
-      .birthday-info {
-        display: flex;
-        align-items: center;
-        gap: 8rpx;
-
-        .calendar-icon {
-          font-size: 20rpx;
-        }
-
-        .birthday-text {
-          font-size: 24rpx;
-          color: #666;
-        }
-      }
-    }
-  }
-}
-
-// 节日提醒卡片
-.holiday-card {
-  background: linear-gradient(135deg, #ffe4e6, #f0e6ff);
-  border-radius: 20rpx;
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-
-  .card-title {
-    font-size: 28rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 16rpx;
-    display: block;
-  }
-
-  .holiday-item {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
-
-    .holiday-icon {
-      font-size: 32rpx;
-    }
-
-    .holiday-content {
-      flex: 1;
-
-      .holiday-name {
-        font-size: 32rpx;
-        font-weight: bold;
-        color: #333;
-        display: block;
-        margin-bottom: 8rpx;
-      }
-
-      .holiday-info {
-        display: flex;
-        align-items: center;
-        gap: 8rpx;
-
-        .calendar-icon {
-          font-size: 20rpx;
-        }
-
-        .holiday-text {
-          font-size: 24rpx;
-          color: #666;
-        }
-      }
-    }
-  }
-}
-
-// 自定义弹窗样式
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -773,8 +523,7 @@ const handleTodoClose = (todo) => {
 }
 
 .modal-content {
-  background: white;
-  border-radius: 16rpx;
+  border-radius: 24rpx;
   width: 600rpx;
   max-width: 90vw;
   overflow: hidden;
@@ -783,98 +532,71 @@ const handleTodoClose = (todo) => {
 
 .modal-header {
   padding: 32rpx 32rpx 16rpx;
-  border-bottom: 1rpx solid #f0f0f0;
-
+  
   .modal-title {
     font-size: 32rpx;
     font-weight: bold;
     color: #333;
     text-align: center;
+    display: block;
   }
 }
 
 .modal-body {
   padding: 24rpx 32rpx;
-
+  
   .modal-message {
     font-size: 28rpx;
     color: #666;
-    line-height: 1.5;
+    text-align: center;
+    display: block;
     margin-bottom: 24rpx;
-    white-space: pre-line;
   }
-
+  
   .note-section {
     .note-label {
-      font-size: 26rpx;
-      color: #333;
-      margin-bottom: 12rpx;
+      font-size: 24rpx;
+      color: #999;
+      margin-bottom: 8rpx;
       display: block;
     }
-
+    
     .note-textarea {
       width: 100%;
-      min-height: 120rpx;
+      height: 120rpx;
+      border-radius: 12rpx;
       padding: 16rpx;
-      border: 2rpx solid #e0e0e0;
-      border-radius: 8rpx;
       font-size: 26rpx;
-      color: #333;
-      background: #fafafa;
-      resize: none;
       box-sizing: border-box;
-
-      &:focus {
-        border-color: #667eea;
-        background: white;
-        outline: none;
-      }
-
-      &::placeholder {
-        color: #999;
-      }
     }
   }
 }
 
 .modal-footer {
-  padding: 16rpx 32rpx 32rpx;
   display: flex;
-  gap: 16rpx;
-  justify-content: flex-end;
-
+  padding: 24rpx 32rpx 32rpx;
+  gap: 20rpx;
+  
   .modal-button {
-    padding: 16rpx 32rpx;
-    border-radius: 8rpx;
+    flex: 1;
+    height: 80rpx;
+    line-height: 80rpx;
+    text-align: center;
+    border-radius: 40rpx;
     font-size: 28rpx;
     border: none;
-    cursor: pointer;
-    transition: all 0.3s;
-
+    
     &.cancel-button {
       background: #f5f5f5;
       color: #666;
-
-      &:hover {
-        background: #e0e0e0;
-      }
-
-      &:active {
-        background: #d0d0d0;
-      }
     }
-
+    
     &.confirm-button {
-      background: #667eea;
-      color: white;
-
-      &:hover {
-        background: #5a6fd8;
-      }
-
-      &:active {
-        background: #4c63d2;
-      }
+      font-weight: bold;
+    }
+    
+    &::after {
+      border: none;
     }
   }
 }

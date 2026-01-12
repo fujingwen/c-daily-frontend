@@ -1,15 +1,15 @@
 <template>
-  <view class="milk-tea-form">
+  <view class="coffee-form">
     <view class="form-item">
-      <text class="form-label">奶茶名称</text>
+      <text class="form-label">咖啡名称</text>
       <u-input
         :value="formData.name"
         @input="updateFormData('name', $event)"
-        placeholder="请输入奶茶名称"
+        placeholder="请输入咖啡名称"
       />
     </view>
     <view class="form-item">
-      <text class="form-label">购买店铺</text>
+      <text class="form-label">咖啡店</text>
       <u-input
         :value="formData.shop"
         @input="updateFormData('shop', $event)"
@@ -86,7 +86,7 @@ const updateFormData = (key, value) => {
 </script>
 
 <style lang="scss" scoped>
-.milk-tea-form {
+.coffee-form {
   .form-item {
     margin-bottom: 30rpx;
 

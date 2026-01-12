@@ -6,6 +6,8 @@
 
 <script>
 import birthdayService from "./utils/birthdayService.js";
+import { useThemeStore } from "@/stores";
+import { storeToRefs } from "pinia";
 
 export default {
   name: "App",
@@ -24,10 +26,14 @@ export default {
   },
   methods: {
     initApp() {
-      // 检查存储权限
-      // 初始化数据库
-      // 设置默认配置
-
+      // 初始化主题
+      const themeStore = useThemeStore();
+      themeStore.loadTheme();
+      
+      // 监听主题变化更新系统UI
+      // 注意：App.vue中无法直接使用watch监听store，因为App.vue在store初始化前可能就已经创建
+      // 但在onLaunch中store已经可用
+      
       // 初始化生日提醒服务
       setTimeout(() => {
         birthdayService.init();

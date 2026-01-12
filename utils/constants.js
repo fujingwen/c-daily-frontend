@@ -59,9 +59,9 @@ export const MODULE_CONFIG = {
     fields: ['weightValue', 'measureTime', 'remark']
   },
   [MODULE_TYPES.MILK_TEA]: {
-    name: '奶茶',
-    icon: '🧋',
-    color: '#ff2d92',
+    name: '咖啡',
+    icon: '☕',
+    color: '#8D6E63',
     group: 'dailyCheckIn',
     fields: ['name', 'shop', 'sugar', 'ice', 'price', 'drinkTime', 'remark']
   },
